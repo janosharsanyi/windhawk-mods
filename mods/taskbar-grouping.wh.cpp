@@ -1,6 +1,6 @@
 // ==WindhawkMod==
-// @id              taskbar-grouping
-// @name            Disable grouping on the taskbar
+// @id              taskbar-grouping-fork
+// @name            Disable grouping on the taskbar - Fork
 // @description     Causes a separate button to be created on the taskbar for each new window
 // @version         1.3.7
 // @author          m417z
@@ -63,6 +63,11 @@ or a similar tool), enable the relevant option in the mod's settings.
   $name: Place ungrouped items together
   $description: >-
     Place each newly opened item next to existing items it would group with.
+- ignorePinnedItemsWhenPlacingUngroupedItemsTogether: false
+  $name: Ignore pinned items when placing ungrouped items together
+  $description: >-
+    If this and "Place ungrouped items together" is enabled above,
+    pinned items will be skipped when searching for the place of the new item
 - useWindowIcons: false
   $name: Use window icons
   $description: >-
@@ -151,6 +156,7 @@ enum class GroupingMode {
 struct {
     PinnedItemsMode pinnedItemsMode;
     bool placeUngroupedItemsTogether;
+    bool ignorePinnedItemsWhenPlacingUngroupedItemsTogether;
     bool useWindowIcons;
     std::unordered_set<std::wstring> excludedProgramItems;
     std::vector<std::wstring> customGroupNames;
@@ -894,6 +900,13 @@ int WINAPI DPA_InsertPtr_Hook(HDPA hdpa, int i, void* p) {
         PVOID taskGroupIter = CTaskBtnGroup_GetGroup_Original(taskBtnGroupIter);
         if (!taskGroupIter) {
             continue;
+        }
+
+        if (g_settings.ignorePinnedItemsWhenPlacingUngroupedItemsTogether) {
+            bool pinned = CTaskGroup_GetFlags_Original(taskGroupIter) & 1;
+            if (pinned) {
+                continue;
+            }
         }
 
         g_compareStringOrdinalHookThreadId = GetCurrentThreadId();
@@ -2206,6 +2219,8 @@ void LoadSettings() {
 
     g_settings.placeUngroupedItemsTogether =
         Wh_GetIntSetting(L"placeUngroupedItemsTogether");
+    g_settings.ignorePinnedItemsWhenPlacingUngroupedItemsTogether =
+        Wh_GetIntSetting(L"ignorePinnedItemsWhenPlacingUngroupedItemsTogether");
     g_settings.useWindowIcons = Wh_GetIntSetting(L"useWindowIcons");
 
     g_settings.excludedProgramItems.clear();
